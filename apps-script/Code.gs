@@ -17,21 +17,49 @@
  * preflight (OPTIONS) request, so update/delete are tunnelled through POST and
  * the frontend sends Content-Type: text/plain to keep the request "simple".
  * Responses from a published /exec URL already carry Access-Control-Allow-Origin: *.
+ *
+ * IMPORTANT: after changing the columns below, run setupSheet() once from the
+ * editor. It rewrites the header row (and clears existing data).
  */
 
 var SHEET_NAME = 'Registrations';
 var HEADERS = [
   'ID',
-  'Name',
-  'Student ID',
-  'Phone Number',
+  'First Name',
+  'Last Name',
+  'NIC',
+  'Email',
+  'Mobile Number',
+  'Organization',
+  'Visitor Category',
+  'Interest Areas',
+  'Heard From',
+  'Consent',
   'Created Date',
   'Created Time',
   'Last Updated'
 ];
 
 // Column indexes (1-based) matching HEADERS above.
-var COL = { ID: 1, NAME: 2, STUDENT_ID: 3, PHONE: 4, CREATED_DATE: 5, CREATED_TIME: 6, LAST_UPDATED: 7 };
+var COL = {
+  ID: 1,
+  FIRST_NAME: 2,
+  LAST_NAME: 3,
+  NIC: 4,
+  EMAIL: 5,
+  PHONE: 6,
+  ORGANIZATION: 7,
+  CATEGORY: 8,
+  INTERESTS: 9,
+  HEARD_FROM: 10,
+  CONSENT: 11,
+  CREATED_DATE: 12,
+  CREATED_TIME: 13,
+  LAST_UPDATED: 14
+};
+
+var VALID_CATEGORIES = ['Student', 'SME', 'Industry', 'Other'];
+var VALID_INTERESTS = ['Sustainability', 'Digital Transformation', 'Innovation', 'Entrepreneurship'];
 
 /* ------------------------------------------------------------------ */
 /* Entry points                                                        */
@@ -93,8 +121,9 @@ function createRecord(body) {
   var clean = validatePayload(body);
   var sheet = getSheet();
 
-  if (findRowByStudentId(sheet, clean.studentId, null) > 0) {
-    return { success: false, message: 'Student ID ' + clean.studentId + ' is already registered' };
+  // NIC is the natural unique key for a person.
+  if (findRowByNic(sheet, clean.nic, null) > 0) {
+    return { success: false, message: 'NIC ' + clean.nic + ' is already registered' };
   }
 
   var now = new Date();
@@ -102,9 +131,16 @@ function createRecord(body) {
 
   sheet.appendRow([
     id,
-    clean.name,
-    clean.studentId,
+    clean.firstName,
+    clean.lastName,
+    clean.nic,
+    clean.email,
     "'" + clean.phone, // leading apostrophe keeps the leading 0 as text
+    clean.organization,
+    clean.visitorCategory,
+    clean.interestAreas.join(', '),
+    clean.heardFrom,
+    clean.consent ? 'Yes' : 'No',
     formatDate(now),
     formatTime(now),
     ''
@@ -124,13 +160,24 @@ function getAllRecords() {
 
   for (var i = 0; i < values.length; i++) {
     var row = values[i];
-    if (!row[COL.ID - 1] && !row[COL.NAME - 1]) continue; // skip blank rows
+    if (!row[COL.ID - 1] && !row[COL.FIRST_NAME - 1]) continue; // skip blank rows
+
+    var firstName = String(row[COL.FIRST_NAME - 1] || '');
+    var lastName = String(row[COL.LAST_NAME - 1] || '');
 
     records.push({
       id: Number(row[COL.ID - 1]) || row[COL.ID - 1],
-      name: String(row[COL.NAME - 1] || ''),
-      studentId: String(row[COL.STUDENT_ID - 1] || ''),
+      firstName: firstName,
+      lastName: lastName,
+      fullName: (firstName + ' ' + lastName).trim(),
+      nic: String(row[COL.NIC - 1] || ''),
+      email: String(row[COL.EMAIL - 1] || ''),
       phone: normalizePhoneOut(row[COL.PHONE - 1]),
+      organization: String(row[COL.ORGANIZATION - 1] || ''),
+      visitorCategory: String(row[COL.CATEGORY - 1] || ''),
+      interestAreas: splitList(row[COL.INTERESTS - 1]),
+      heardFrom: String(row[COL.HEARD_FROM - 1] || ''),
+      consent: String(row[COL.CONSENT - 1] || '').trim().toLowerCase() === 'yes',
       createdDate: cellToDate(row[COL.CREATED_DATE - 1]),
       createdTime: cellToTime(row[COL.CREATED_TIME - 1]),
       lastUpdated: cellToDateTime(row[COL.LAST_UPDATED - 1])
@@ -145,7 +192,7 @@ function getAllRecords() {
   return records;
 }
 
-/** UPDATE - overwrite name / student ID / phone and stamp Last Updated. */
+/** UPDATE - overwrite the editable fields and stamp Last Updated. */
 function updateRecord(body) {
   if (body.id === undefined || body.id === null || body.id === '') {
     return { success: false, message: 'Record ID is required' };
@@ -159,13 +206,20 @@ function updateRecord(body) {
     return { success: false, message: 'Record with ID ' + body.id + ' was not found' };
   }
 
-  if (findRowByStudentId(sheet, clean.studentId, row) > 0) {
-    return { success: false, message: 'Student ID ' + clean.studentId + ' belongs to another record' };
+  if (findRowByNic(sheet, clean.nic, row) > 0) {
+    return { success: false, message: 'NIC ' + clean.nic + ' belongs to another record' };
   }
 
-  sheet.getRange(row, COL.NAME).setValue(clean.name);
-  sheet.getRange(row, COL.STUDENT_ID).setValue(clean.studentId);
+  sheet.getRange(row, COL.FIRST_NAME).setValue(clean.firstName);
+  sheet.getRange(row, COL.LAST_NAME).setValue(clean.lastName);
+  sheet.getRange(row, COL.NIC).setValue(clean.nic);
+  sheet.getRange(row, COL.EMAIL).setValue(clean.email);
   sheet.getRange(row, COL.PHONE).setValue("'" + clean.phone);
+  sheet.getRange(row, COL.ORGANIZATION).setValue(clean.organization);
+  sheet.getRange(row, COL.CATEGORY).setValue(clean.visitorCategory);
+  sheet.getRange(row, COL.INTERESTS).setValue(clean.interestAreas.join(', '));
+  sheet.getRange(row, COL.HEARD_FROM).setValue(clean.heardFrom);
+  sheet.getRange(row, COL.CONSENT).setValue(clean.consent ? 'Yes' : 'No');
 
   var now = new Date();
   sheet.getRange(row, COL.LAST_UPDATED).setValue(formatDate(now) + ' ' + formatTime(now));
@@ -195,22 +249,83 @@ function deleteRecord(body) {
 /* ------------------------------------------------------------------ */
 
 function validatePayload(body) {
-  var name = String(body.name || '').trim();
-  var studentId = String(body.studentId || '').trim().toUpperCase();
+  var firstName = String(body.firstName || '').trim();
+  var lastName = String(body.lastName || '').trim();
+  var nic = String(body.nic || '').replace(/\s/g, '').toUpperCase();
+  var email = String(body.email || '').trim();
   var phone = normalizePhoneIn(body.phone);
+  var organization = String(body.organization || '').trim();
+  var visitorCategory = String(body.visitorCategory || '').trim();
+  var heardFrom = String(body.heardFrom || '').trim();
 
-  if (!name) throw new Error('Name is required');
-  if (name.length < 2 || name.length > 60) throw new Error('Name must be between 2 and 60 characters');
+  // Required
+  if (!firstName) throw new Error('First name is required');
+  if (firstName.length > 40) throw new Error('First name must be under 40 characters');
+  if (!lastName) throw new Error('Last name is required');
+  if (lastName.length > 40) throw new Error('Last name must be under 40 characters');
 
-  if (!studentId) throw new Error('Student ID is required');
-  if (!/^[A-Z0-9/\-_]{3,20}$/.test(studentId)) throw new Error('Student ID format is invalid');
+  if (!nic) throw new Error('NIC number is required');
+  if (!/^\d{9}[VX]$/.test(nic) && !/^\d{12}$/.test(nic)) {
+    throw new Error('Enter a valid NIC (123456789V or 200012345678)');
+  }
 
-  if (!phone) throw new Error('Phone number is required');
+  if (!phone) throw new Error('Mobile number is required');
   if (!/^0(?:7[01245678]\d{7}|(?:1[1-9]|2[1-9]|3[1-9]|4[1-7]|5[1-8]|6[1-3]|8[1-8]|9[1-2])\d{7})$/.test(phone)) {
     throw new Error('Enter a valid Sri Lankan phone number');
   }
 
-  return { name: name, studentId: studentId, phone: phone };
+  if (!visitorCategory) throw new Error('Visitor category is required');
+  if (VALID_CATEGORIES.indexOf(visitorCategory) === -1) {
+    throw new Error('Unknown visitor category: ' + visitorCategory);
+  }
+
+  var interestAreas = toList(body.interestAreas).filter(function (item) {
+    return VALID_INTERESTS.indexOf(item) !== -1;
+  });
+  if (interestAreas.length === 0) throw new Error('Select at least one interest area');
+
+  // Optional
+  if (email && !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) {
+    throw new Error('Enter a valid email address');
+  }
+  if (organization.length > 80) throw new Error('Organization must be under 80 characters');
+  if (heardFrom.length > 120) throw new Error('Heard From must be under 120 characters');
+
+  return {
+    firstName: firstName,
+    lastName: lastName,
+    nic: nic,
+    email: email,
+    phone: phone,
+    organization: organization,
+    visitorCategory: visitorCategory,
+    interestAreas: interestAreas,
+    heardFrom: heardFrom,
+    consent: body.consent === true || String(body.consent).toLowerCase() === 'true'
+  };
+}
+
+/** Accept an array or a comma separated string. */
+function toList(value) {
+  if (Object.prototype.toString.call(value) === '[object Array]') {
+    return value.map(function (item) {
+      return String(item).trim();
+    });
+  }
+  return splitList(value);
+}
+
+function splitList(value) {
+  var text = String(value === undefined || value === null ? '' : value).trim();
+  if (!text) return [];
+  return text
+    .split(',')
+    .map(function (item) {
+      return item.trim();
+    })
+    .filter(function (item) {
+      return item.length > 0;
+    });
 }
 
 /** Accepts +94 / 0094 / 94 / 0 prefixes and stores everything as 0XXXXXXXXX. */
@@ -261,7 +376,9 @@ function writeHeaders(sheet) {
     .setBackground('#eef4ff')
     .setFontColor('#1c2e87');
   sheet.setFrozenRows(1);
-  sheet.getRange(1, COL.PHONE, sheet.getMaxRows(), 1).setNumberFormat('@'); // phone column as text
+  // Phone and NIC as text so leading zeros and trailing V survive.
+  sheet.getRange(1, COL.PHONE, sheet.getMaxRows(), 1).setNumberFormat('@');
+  sheet.getRange(1, COL.NIC, sheet.getMaxRows(), 1).setNumberFormat('@');
   sheet.autoResizeColumns(1, HEADERS.length);
 }
 
@@ -293,17 +410,17 @@ function findRowById(sheet, id) {
   return -1;
 }
 
-/** Row number of a duplicate student ID (ignoring `skipRow`), or -1. */
-function findRowByStudentId(sheet, studentId, skipRow) {
+/** Row number of a duplicate NIC (ignoring `skipRow`), or -1. */
+function findRowByNic(sheet, nic, skipRow) {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return -1;
 
-  var values = sheet.getRange(2, COL.STUDENT_ID, lastRow - 1, 1).getValues();
+  var values = sheet.getRange(2, COL.NIC, lastRow - 1, 1).getValues();
 
   for (var i = 0; i < values.length; i++) {
     var row = i + 2;
     if (skipRow && row === skipRow) continue;
-    if (String(values[i][0]).trim().toUpperCase() === studentId) return row;
+    if (String(values[i][0]).replace(/\s/g, '').toUpperCase() === nic) return row;
   }
   return -1;
 }
@@ -361,16 +478,30 @@ function jsonResponse(payload) {
 /* One-time setup (run manually from the Apps Script editor)           */
 /* ------------------------------------------------------------------ */
 
+/** Rebuilds the sheet with the current HEADERS. WARNING: clears existing data. */
 function setupSheet() {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.insertSheet(SHEET_NAME);
   sheet.clear();
   writeHeaders(sheet);
-  SpreadsheetApp.getUi().alert('Sheet "' + SHEET_NAME + '" is ready.');
+  SpreadsheetApp.getUi().alert('Sheet "' + SHEET_NAME + '" is ready with ' + HEADERS.length + ' columns.');
 }
 
 /** Quick smoke test - run from the editor and check the execution log. */
 function testApi() {
-  Logger.log(createRecord({ name: 'Test User', studentId: 'TEST001', phone: '0771234567' }));
+  Logger.log(
+    createRecord({
+      firstName: 'Test',
+      lastName: 'User',
+      nic: '200012345678',
+      email: 'test@example.com',
+      phone: '0771234567',
+      organization: 'ACEL',
+      visitorCategory: 'Student',
+      interestAreas: ['Innovation', 'Sustainability'],
+      heardFrom: 'Facebook',
+      consent: true
+    })
+  );
   Logger.log(JSON.stringify(getAllRecords()));
 }

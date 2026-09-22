@@ -11,9 +11,9 @@ A frontend-only registration management app. React (Vite) on Vercel, Google Apps
 │  React + Vite (Vercel)   │ ───────────────► │  Google Apps Script       │ ───────────────► │  Google Sheet    │
 │                          │                  │  Web App (/exec)          │                  │  "Registrations" │
 │  Register.jsx            │  GET  ?action=   │                           │  SpreadsheetApp  │                  │
-│  Dashboard.jsx           │  POST {action}   │  doGet()  -> list         │                  │  ID | Name |     │
-│  services/api.js         │ ◄─────────────── │  doPost() -> create /     │ ◄─────────────── │  Student ID |    │
-│                          │    JSON          │             update /      │      values      │  Phone | ...     │
+│  Dashboard.jsx           │  POST {action}   │  doGet()  -> list         │                  │  ID | First Name │
+│  services/api.js         │ ◄─────────────── │  doPost() -> create /     │ ◄─────────────── │  NIC | Mobile |  │
+│                          │    JSON          │             update /      │      values      │  Category | ...  │
 └──────────────────────────┘                  │             delete        │                  └──────────────────┘
                                               └───────────────────────────┘
 ```
@@ -21,7 +21,7 @@ A frontend-only registration management app. React (Vite) on Vercel, Google Apps
 **Request flow, end to end**
 
 1. The user submits the form in `Register.jsx`.
-2. `utils/validation.js` validates name, student ID and the Sri Lankan phone format in the browser.
+2. `utils/validation.js` validates the names, NIC, Sri Lankan phone format and the required choice fields in the browser.
 3. `services/api.js` sends the payload to the Apps Script `/exec` URL taken from `VITE_GOOGLE_SCRIPT_URL`.
 4. `doPost()` in `Code.gs` takes a script lock, re-validates the payload server side, generates the next ID, stamps date/time, and appends the row via `SpreadsheetApp`.
 5. Apps Script returns JSON; React shows a success toast and clears the form.
@@ -50,19 +50,26 @@ This is the standard, working pattern for Apps Script APIs. Sending `application
 │   └── favicon.svg
 ├── src/
 │   ├── components/
-│   │   ├── Navbar.jsx      # Top navigation
-│   │   ├── FormInput.jsx   # Labelled input with error/hint states
-│   │   ├── DataTable.jsx   # Table (desktop) + cards (mobile), sorting, empty/error states
-│   │   ├── Modal.jsx       # Accessible dialog (Esc, backdrop, scroll lock)
-│   │   ├── Toast.jsx       # Success / error / info notifications
-│   │   └── Spinner.jsx     # Loading indicator
+│   │   ├── Navbar.jsx          # Top navigation + language toggle
+│   │   ├── LanguageToggle.jsx  # EN / සිං switch
+│   │   ├── FormInput.jsx       # Labelled input with error/hint states
+│   │   ├── RadioGroup.jsx      # Visitor category
+│   │   ├── CheckboxGroup.jsx   # Interest areas (multi-select)
+│   │   ├── DataTable.jsx       # Table (desktop) + cards (mobile), sorting, empty/error states
+│   │   ├── Modal.jsx           # Accessible dialog (Esc, backdrop, scroll lock)
+│   │   ├── Toast.jsx           # Success / error / info notifications
+│   │   └── Spinner.jsx         # Loading indicator
+│   ├── context/
+│   │   └── LanguageContext.jsx # Language state + t() helper
+│   ├── i18n/
+│   │   └── translations.js     # English + Sinhala strings
 │   ├── pages/
 │   │   ├── Register.jsx    # Page 1 - registration form
 │   │   └── Dashboard.jsx   # Page 2 - stats, search, sort, update, delete
 │   ├── services/
 │   │   └── api.js          # All Apps Script calls
 │   ├── utils/
-│   │   └── validation.js   # Field validators + phone normalisation
+│   │   └── validation.js   # Field validators + phone/NIC normalisation
 │   ├── App.jsx             # Routes + layout
 │   ├── main.jsx            # Entry point
 │   └── index.css           # Tailwind layers
@@ -78,19 +85,32 @@ This is the standard, working pattern for Apps Script APIs. Sending `application
 ## 3. Google Sheet setup
 
 1. Go to <https://sheets.new> and create a spreadsheet. Name it **ACEL Registrations**.
-2. Rename the first tab to exactly **`Registrations`** (bottom-left tab → double-click).
-3. Add these headers in row 1, columns A–G:
+2. Rename the first tab to exactly **`Registrations`**.
+3. **File -> Settings -> Time zone ->** `(GMT+05:30) Colombo`.
+4. Open **Extensions -> Apps Script**, paste `Code.gs` (next section), then run **`setupSheet`** once. It writes all 14 headers, freezes the header row, and formats the NIC and phone columns as plain text so leading zeros and the trailing `V` survive.
 
-   | A | B | C | D | E | F | G |
-   |---|---|---|---|---|---|---|
-   | ID | Name | Student ID | Phone Number | Created Date | Created Time | Last Updated |
+The sheet ends up with these columns:
 
-4. Select column **D** → *Format → Number → Plain text*. This stops Sheets from eating the leading `0` in `0771234567`.
-5. **File → Settings → Time zone →** `(GMT+05:30) Colombo`, so the generated dates/times are local.
+| # | Column | Required | Notes |
+|---|---|---|---|
+| A | ID | auto | Generated, highest + 1 |
+| B | First Name | **yes** | |
+| C | Last Name | **yes** | |
+| D | NIC | **yes** | Unique key - duplicates are rejected |
+| E | Email | no | Validated only if filled |
+| F | Mobile Number | **yes** | Stored as `07XXXXXXXX` |
+| G | Organization | no | |
+| H | Visitor Category | **yes** | Student / SME / Industry / Other |
+| I | Interest Areas | **yes** | Comma separated, at least one |
+| J | Heard From | no | |
+| K | Consent | no | `Yes` / `No` |
+| L | Created Date | auto | `YYYY-MM-DD` |
+| M | Created Time | auto | `HH:MM` |
+| N | Last Updated | auto | Set on edit |
 
-> You can skip steps 3–4: run the `setupSheet()` function once from the Apps Script editor and it creates the tab, headers, formatting and frozen header row for you.
+> Categories and interest areas are always stored in **English**, whichever language the visitor used, so the data stays sortable and filterable.
 
----
+> **Upgrading an existing sheet:** `setupSheet()` calls `sheet.clear()` and wipes existing rows. Duplicate the old sheet first if the data matters.
 
 ## 4. Apps Script setup
 
@@ -197,9 +217,17 @@ GET  <BASE_URL>?action=list
   "data": [
     {
       "id": 1,
-      "name": "John",
-      "studentId": "IT001",
+      "firstName": "Nimal",
+      "lastName": "Perera",
+      "fullName": "Nimal Perera",
+      "nic": "200012345678",
+      "email": "nimal@example.com",
       "phone": "0771234567",
+      "organization": "ACEL",
+      "visitorCategory": "Student",
+      "interestAreas": ["Innovation", "Sustainability"],
+      "heardFrom": "Facebook",
+      "consent": true,
       "createdDate": "2026-09-22",
       "createdTime": "16:30",
       "lastUpdated": ""
@@ -214,7 +242,19 @@ GET  <BASE_URL>?action=list
 POST <BASE_URL>
 Content-Type: text/plain;charset=utf-8
 
-{ "action": "create", "name": "John", "studentId": "IT001", "phone": "0771234567" }
+{
+  "action": "create",
+  "firstName": "Nimal",
+  "lastName": "Perera",
+  "nic": "200012345678",
+  "email": "nimal@example.com",
+  "phone": "0771234567",
+  "organization": "ACEL",
+  "visitorCategory": "Student",
+  "interestAreas": ["Innovation", "Sustainability"],
+  "heardFrom": "Facebook",
+  "consent": true
+}
 ```
 
 ```json
@@ -226,7 +266,7 @@ Content-Type: text/plain;charset=utf-8
 ```
 POST <BASE_URL>
 
-{ "action": "update", "id": 1, "name": "Updated Name", "studentId": "IT002", "phone": "0711111111" }
+{ "action": "update", "id": 1, "firstName": "Nimal", "lastName": "Silva", "nic": "200012345678", "phone": "0711111111", "visitorCategory": "SME", "interestAreas": ["Innovation"] }
 ```
 
 ```json
@@ -250,7 +290,7 @@ POST <BASE_URL>
 Any failure returns HTTP 200 with:
 
 ```json
-{ "success": false, "message": "Student ID IT001 is already registered" }
+{ "success": false, "message": "NIC 200012345678 is already registered" }
 ```
 
 `services/api.js` turns `success: false` into a thrown `Error`, which the pages render as a red toast.
@@ -259,15 +299,30 @@ Any failure returns HTTP 200 with:
 
 ## 9. Validation rules
 
-| Field | Client (`validation.js`) | Server (`Code.gs`) |
-|---|---|---|
-| Name | required, 2–60 chars, letters/spaces/`-`/`'` (Sinhala + Tamil ranges allowed) | required, 2–60 chars |
-| Student ID | required, 3–20 chars, `A-Z 0-9 / - _`, upper-cased on submit | same regex, plus duplicate check against the sheet |
-| Phone | required, Sri Lankan mobile or landline; accepts `07…`, `+947…`, `0094…`, `947…`; normalised to `07XXXXXXXX` | re-normalised and re-validated |
+Every rule runs twice - once in the browser for fast feedback, once in Apps Script because a client-side check is a convenience, never a guarantee.
 
-Both layers validate — a client-side check is a convenience, never a guarantee.
+| Field | Rule |
+|-------|------|
+| First / Last name | required, 2-40 chars, Latin/Sinhala/Tamil letters plus `. ' -` |
+| NIC | required, `123456789V` (9 digits + V/X) or `200012345678` (12 digits); must be unique |
+| Email | optional; standard address shape if provided |
+| Mobile | required; `07…`, `+947…`, `0094…`, `947…` and landlines, normalised to `07XXXXXXXX` |
+| Organization | optional, under 80 chars |
+| Visitor Category | required, one of the four known values |
+| Interest Areas | required, at least one known value |
+| Heard From | optional, under 120 chars |
+| Consent | optional checkbox |
 
----
+Client-side messages are stored as **translation keys**, not sentences, so an error raised in English re-renders in Sinhala the moment the language is switched. Errors returned by Apps Script are English only.
+
+## 9a. Language switching
+
+The header carries an **EN / සිං** toggle. All labels, hints, buttons, table headers, validation messages and toasts are translated; the choice is remembered in `localStorage` and restored on the next visit.
+
+- Strings live in [`src/i18n/translations.js`](src/i18n/translations.js) - one object per language, same shape.
+- `LanguageProvider` in [`src/context/LanguageContext.jsx`](src/context/LanguageContext.jsx) exposes `t()` and the current language, and sets `<html lang>` so the Sinhala line-height rule applies.
+- Sinhala glyphs come from **Noto Sans Sinhala**, loaded in `index.html`.
+- To add a language: add an entry to `translations`, add it to `LANGUAGES`, done.
 
 ## 10. Testing steps
 
@@ -278,7 +333,7 @@ curl "https://script.google.com/macros/s/XXXX/exec?action=ping"
 curl "https://script.google.com/macros/s/XXXX/exec?action=list"
 curl -L -X POST "https://script.google.com/macros/s/XXXX/exec" \
   -H "Content-Type: text/plain;charset=utf-8" \
-  -d '{"action":"create","name":"Test User","studentId":"IT999","phone":"0771234567"}'
+  -d '{"action":"create","firstName":"Test","lastName":"User","nic":"200012345678","phone":"0771234567","visitorCategory":"Student","interestAreas":["Innovation"]}'
 ```
 
 (`-L` matters: Apps Script answers with a 302 to `googleusercontent.com`.)
@@ -287,9 +342,10 @@ curl -L -X POST "https://script.google.com/macros/s/XXXX/exec" \
 
 1. `npm run dev`, open `/`.
 2. Submit an empty form → three inline errors, nothing sent.
-3. Enter phone `123` → *"Enter a valid Sri Lankan number"*.
+3. Enter phone `123` → *"Enter a valid Sri Lankan number"*. Enter NIC `123` → NIC error.
+3b. Click **සිං** in the header → every label, hint, button **and the visible errors** switch to Sinhala. Reload → Sinhala is remembered.
 4. Submit a valid record → green toast, form clears, new row visible in the Google Sheet with ID, date and time filled in.
-5. Submit the same Student ID again → red toast: *"… is already registered"*.
+5. Submit the same NIC again → red toast: *"… is already registered"*.
 6. Open `/dashboard` → the record appears, "Total registrations" increments.
 7. Click **Update** → change the name → **Save changes** → toast, table refreshes, `Last Updated` column now has a timestamp.
 8. Click **Delete** → confirm → the row disappears from both the table and the sheet.

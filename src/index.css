@@ -8,8 +8,15 @@
   }
 
   body {
-    @apply bg-slate-50 font-sans text-slate-900 antialiased;
-    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    @apply bg-slate-50 text-slate-900 antialiased;
+    /* Noto Sans Sinhala carries the Sinhala glyphs; Inter handles Latin. */
+    font-family: Inter, 'Noto Sans Sinhala', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+      Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* Sinhala needs a little more line height to avoid clipped vowel signs. */
+  html[lang='si'] body {
+    line-height: 1.7;
   }
 
   /* Hide the native clear button so the search field keeps one visual style */

@@ -85,14 +85,14 @@ export async function getRecords() {
   return records
 }
 
-/** POST - create a new record. */
-export function addRecord({ name, studentId, phone }) {
-  return post({ action: 'create', name, studentId, phone })
+/** POST - create a new record from an already-normalised payload. */
+export function addRecord(record) {
+  return post({ ...record, action: 'create' })
 }
 
 /** PUT (tunnelled over POST) - update an existing record by id. */
-export function updateRecord({ id, name, studentId, phone }) {
-  return post({ action: 'update', id, name, studentId, phone })
+export function updateRecord(record) {
+  return post({ ...record, action: 'update' })
 }
 
 /** DELETE (tunnelled over POST) - remove a record by id. */

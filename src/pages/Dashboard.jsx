@@ -1,21 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import CheckboxGroup from '../components/CheckboxGroup'
 import DataTable from '../components/DataTable'
 import FormInput from '../components/FormInput'
 import Modal from '../components/Modal'
+import RadioGroup from '../components/RadioGroup'
 import Spinner from '../components/Spinner'
 import Toast from '../components/Toast'
+import { useLanguage } from '../context/LanguageContext'
+import { INTEREST_AREAS, VISITOR_CATEGORIES } from '../i18n/translations'
 import { deleteRecord, getRecords, updateRecord } from '../services/api'
-import { normalizePhone, validateForm, validateName, validatePhone, validateStudentId } from '../utils/validation'
-
-const FIELD_VALIDATORS = {
-  name: validateName,
-  studentId: validateStudentId,
-  phone: validatePhone,
-}
+import { FIELD_VALIDATORS, toPayload, validateForm } from '../utils/validation'
 
 function sortValue(record, key) {
   if (key === 'id') return Number(record.id) || 0
   if (key === 'createdDate') return `${record.createdDate || ''} ${record.createdTime || ''}`.trim()
+  if (key === 'fullName') {
+    return String(record.fullName || `${record.firstName || ''} ${record.lastName || ''}`)
+      .trim()
+      .toLowerCase()
+  }
   return String(record[key] || '').toLowerCase()
 }
 
@@ -37,12 +40,14 @@ function StatCard({ label, value, hint, accent = 'brand' }) {
         </span>
       </div>
       <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="mt-1 truncate text-xs text-slate-500">{hint}</p>}
     </div>
   )
 }
 
 export default function Dashboard() {
+  const { t } = useLanguage()
+
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -52,7 +57,7 @@ export default function Dashboard() {
   const [sort, setSort] = useState({ key: 'id', direction: 'desc' })
 
   const [editing, setEditing] = useState(null)
-  const [editForm, setEditForm] = useState({ name: '', studentId: '', phone: '' })
+  const [editForm, setEditForm] = useState(null)
   const [editErrors, setEditErrors] = useState({})
   const [saving, setSaving] = useState(false)
 
@@ -81,22 +86,29 @@ export default function Dashboard() {
 
     const filtered = term
       ? records.filter((record) =>
-          [record.name, record.studentId, record.phone, String(record.id)]
+          [
+            record.fullName,
+            record.firstName,
+            record.lastName,
+            record.nic,
+            record.phone,
+            record.email,
+            record.organization,
+            String(record.id),
+          ]
             .join(' ')
             .toLowerCase()
             .includes(term)
         )
       : records
 
-    const sorted = [...filtered].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const left = sortValue(a, sort.key)
       const right = sortValue(b, sort.key)
       if (left < right) return sort.direction === 'asc' ? -1 : 1
       if (left > right) return sort.direction === 'asc' ? 1 : -1
       return 0
     })
-
-    return sorted
   }, [records, search, sort])
 
   const todayCount = useMemo(() => {
@@ -117,16 +129,39 @@ export default function Dashboard() {
 
   function openEdit(record) {
     setEditing(record)
-    setEditForm({ name: record.name, studentId: record.studentId, phone: record.phone })
+    setEditForm({
+      firstName: record.firstName || '',
+      lastName: record.lastName || '',
+      nic: record.nic || '',
+      email: record.email || '',
+      phone: record.phone || '',
+      organization: record.organization || '',
+      visitorCategory: record.visitorCategory || '',
+      interestAreas: Array.isArray(record.interestAreas) ? record.interestAreas : [],
+      heardFrom: record.heardFrom || '',
+      consent: Boolean(record.consent),
+    })
     setEditErrors({})
+  }
+
+  function closeEdit() {
+    if (saving) return
+    setEditing(null)
+    setEditForm(null)
   }
 
   function setEditField(field, value) {
     setEditForm((current) => ({ ...current, [field]: value }))
     if (editErrors[field]) {
-      setEditErrors((current) => ({ ...current, [field]: FIELD_VALIDATORS[field](value) }))
+      setEditErrors((current) => ({ ...current, [field]: FIELD_VALIDATORS[field]?.(value) || '' }))
     }
   }
+
+  const editErrorFor = (field) => (editErrors[field] ? t(editErrors[field]) : '')
+
+  const displayToast = toast
+    ? { type: toast.type, message: toast.key ? t(toast.key) : toast.message }
+    : null
 
   async function handleUpdate(event) {
     event.preventDefault()
@@ -137,14 +172,10 @@ export default function Dashboard() {
 
     setSaving(true)
     try {
-      const result = await updateRecord({
-        id: editing.id,
-        name: editForm.name.trim(),
-        studentId: editForm.studentId.trim().toUpperCase(),
-        phone: normalizePhone(editForm.phone),
-      })
+      await updateRecord({ id: editing.id, ...toPayload(editForm) })
       setEditing(null)
-      setToast({ type: 'success', message: result.message || 'Record updated successfully.' })
+      setEditForm(null)
+      setToast({ type: 'success', key: 'dashboard.updated' })
       await loadRecords({ silent: true })
     } catch (error) {
       setToast({ type: 'error', message: error.message })
@@ -157,9 +188,9 @@ export default function Dashboard() {
     const record = deleting
     setBusyId(record.id)
     try {
-      const result = await deleteRecord(record.id)
+      await deleteRecord(record.id)
       setDeleting(null)
-      setToast({ type: 'success', message: result.message || 'Record deleted successfully.' })
+      setToast({ type: 'success', key: 'dashboard.deleted' })
       await loadRecords({ silent: true })
     } catch (error) {
       setToast({ type: 'error', message: error.message })
@@ -168,12 +199,23 @@ export default function Dashboard() {
     }
   }
 
+  const categoryOptions = VISITOR_CATEGORIES.map((value) => ({
+    value,
+    label: t(`categories.${value}`),
+  }))
+  const interestOptions = INTEREST_AREAS.map((value) => ({
+    value,
+    label: t(`interests.${value}`),
+  }))
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-500">View, update and remove registration records.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            {t('dashboard.title')}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">{t('dashboard.subtitle')}</p>
         </div>
 
         <button
@@ -189,32 +231,32 @@ export default function Dashboard() {
               clipRule="evenodd"
             />
           </svg>
-          Refresh
+          {t('dashboard.refresh')}
         </button>
       </div>
 
       {toast && (
         <div className="mt-5">
-          <Toast toast={toast} onDismiss={() => setToast(null)} />
+          <Toast toast={displayToast} onDismiss={() => setToast(null)} />
         </div>
       )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <StatCard
-          label="Total registrations"
+          label={t('dashboard.totalLabel')}
           value={loading ? '-' : records.length}
-          hint="All records in the sheet"
+          hint={t('dashboard.totalHint')}
         />
         <StatCard
-          label="Registered today"
+          label={t('dashboard.todayLabel')}
           value={loading ? '-' : todayCount}
-          hint="Submitted in the last 24 hours"
+          hint={t('dashboard.todayHint')}
           accent="emerald"
         />
         <StatCard
-          label="Showing"
+          label={t('dashboard.showingLabel')}
           value={loading ? '-' : visibleRecords.length}
-          hint={search ? `Filtered by "${search}"` : 'No filter applied'}
+          hint={search ? `${t('dashboard.filteredBy')}: ${search}` : t('dashboard.noFilter')}
           accent="slate"
         />
       </div>
@@ -238,14 +280,14 @@ export default function Dashboard() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search name, student ID or phone"
-              aria-label="Search records"
+              placeholder={t('dashboard.searchPlaceholder')}
+              aria-label={t('dashboard.searchLabel')}
               className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
             />
           </div>
 
           <label className="flex items-center gap-2 text-sm text-slate-500">
-            <span className="whitespace-nowrap">Sort by</span>
+            <span className="whitespace-nowrap">{t('dashboard.sortBy')}</span>
             <select
               value={`${sort.key}:${sort.direction}`}
               onChange={(event) => {
@@ -254,12 +296,12 @@ export default function Dashboard() {
               }}
               className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100"
             >
-              <option value="id:desc">Latest records</option>
-              <option value="id:asc">Oldest records</option>
-              <option value="name:asc">Name (A-Z)</option>
-              <option value="name:desc">Name (Z-A)</option>
-              <option value="studentId:asc">Student ID (A-Z)</option>
-              <option value="createdDate:desc">Created date (newest)</option>
+              <option value="id:desc">{t('dashboard.sortLatest')}</option>
+              <option value="id:asc">{t('dashboard.sortOldest')}</option>
+              <option value="fullName:asc">{t('dashboard.sortNameAsc')}</option>
+              <option value="fullName:desc">{t('dashboard.sortNameDesc')}</option>
+              <option value="visitorCategory:asc">{t('dashboard.sortCategory')}</option>
+              <option value="createdDate:desc">{t('dashboard.sortCreated')}</option>
             </select>
           </label>
         </div>
@@ -280,19 +322,20 @@ export default function Dashboard() {
 
       {/* Update modal */}
       <Modal
-        open={Boolean(editing)}
-        title="Update record"
-        description={editing ? `Editing record #${editing.id}` : ''}
-        onClose={() => (saving ? null : setEditing(null))}
+        open={Boolean(editing && editForm)}
+        size="lg"
+        title={t('dashboard.updateTitle')}
+        description={editing ? `${t('dashboard.editingRecord')} #${editing.id}` : ''}
+        onClose={closeEdit}
         footer={
           <>
             <button
               type="button"
-              onClick={() => setEditing(null)}
+              onClick={closeEdit}
               disabled={saving}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
             >
-              Cancel
+              {t('dashboard.cancel')}
             </button>
             <button
               type="submit"
@@ -300,48 +343,129 @@ export default function Dashboard() {
               disabled={saving}
               className="flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-70"
             >
-              {saving ? <Spinner className="h-4 w-4" label="Saving..." /> : 'Save changes'}
+              {saving ? <Spinner className="h-4 w-4" label={t('dashboard.saving')} /> : t('dashboard.save')}
             </button>
           </>
         }
       >
-        <form id="edit-record-form" onSubmit={handleUpdate} noValidate className="space-y-5">
-          <FormInput
-            id="edit-name"
-            label="Name"
-            required
-            value={editForm.name}
-            onChange={(value) => setEditField('name', value)}
-            error={editErrors.name}
-            disabled={saving}
-          />
-          <FormInput
-            id="edit-studentId"
-            label="Student ID"
-            required
-            value={editForm.studentId}
-            onChange={(value) => setEditField('studentId', value)}
-            error={editErrors.studentId}
-            disabled={saving}
-          />
-          <FormInput
-            id="edit-phone"
-            label="Phone Number"
-            required
-            type="tel"
-            value={editForm.phone}
-            onChange={(value) => setEditField('phone', value)}
-            error={editErrors.phone}
-            disabled={saving}
-          />
-        </form>
+        {editForm && (
+          <form id="edit-record-form" onSubmit={handleUpdate} noValidate className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormInput
+                id="edit-firstName"
+                label={t('fields.firstName')}
+                required
+                value={editForm.firstName}
+                onChange={(value) => setEditField('firstName', value)}
+                error={editErrorFor('firstName')}
+                disabled={saving}
+              />
+              <FormInput
+                id="edit-lastName"
+                label={t('fields.lastName')}
+                required
+                value={editForm.lastName}
+                onChange={(value) => setEditField('lastName', value)}
+                error={editErrorFor('lastName')}
+                disabled={saving}
+              />
+            </div>
+
+            <FormInput
+              id="edit-nic"
+              label={t('fields.nic')}
+              required
+              value={editForm.nic}
+              onChange={(value) => setEditField('nic', value)}
+              error={editErrorFor('nic')}
+              disabled={saving}
+            />
+
+            <FormInput
+              id="edit-email"
+              label={t('fields.email')}
+              type="email"
+              value={editForm.email}
+              onChange={(value) => setEditField('email', value)}
+              error={editErrorFor('email')}
+              disabled={saving}
+            />
+
+            <FormInput
+              id="edit-phone"
+              label={t('fields.mobile')}
+              required
+              type="tel"
+              value={editForm.phone}
+              onChange={(value) => setEditField('phone', value)}
+              error={editErrorFor('phone')}
+              disabled={saving}
+            />
+
+            <FormInput
+              id="edit-organization"
+              label={t('fields.organization')}
+              value={editForm.organization}
+              onChange={(value) => setEditField('organization', value)}
+              error={editErrorFor('organization')}
+              disabled={saving}
+            />
+
+            <RadioGroup
+              name="edit-visitorCategory"
+              label={t('fields.visitorCategory')}
+              required
+              options={categoryOptions}
+              value={editForm.visitorCategory}
+              onChange={(value) => setEditField('visitorCategory', value)}
+              error={editErrorFor('visitorCategory')}
+              disabled={saving}
+            />
+
+            <CheckboxGroup
+              name="edit-interestAreas"
+              label={t('fields.interestArea')}
+              hint={t('fields.interestAreaHint')}
+              required
+              options={interestOptions}
+              values={editForm.interestAreas}
+              onChange={(values) => setEditField('interestAreas', values)}
+              error={editErrorFor('interestAreas')}
+              disabled={saving}
+            />
+
+            <FormInput
+              id="edit-heardFrom"
+              label={t('fields.heardFrom')}
+              value={editForm.heardFrom}
+              onChange={(value) => setEditField('heardFrom', value)}
+              error={editErrorFor('heardFrom')}
+              disabled={saving}
+            />
+
+            <label
+              htmlFor="edit-consent"
+              className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 text-sm text-slate-700"
+            >
+              <input
+                id="edit-consent"
+                type="checkbox"
+                checked={editForm.consent}
+                disabled={saving}
+                onChange={(event) => setEditField('consent', event.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              <span>{t('fields.consent')}</span>
+            </label>
+          </form>
+        )}
       </Modal>
 
       {/* Delete confirmation */}
       <Modal
         open={Boolean(deleting)}
         size="sm"
-        title="Delete record"
+        title={t('dashboard.deleteTitle')}
         onClose={() => (busyId ? null : setDeleting(null))}
         footer={
           <>
@@ -351,7 +475,7 @@ export default function Dashboard() {
               disabled={Boolean(busyId)}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
             >
-              Cancel
+              {t('dashboard.cancel')}
             </button>
             <button
               type="button"
@@ -359,15 +483,21 @@ export default function Dashboard() {
               disabled={Boolean(busyId)}
               className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-70"
             >
-              {busyId ? <Spinner className="h-4 w-4" label="Deleting..." /> : 'Delete record'}
+              {busyId ? (
+                <Spinner className="h-4 w-4" label={t('dashboard.deleting')} />
+              ) : (
+                t('dashboard.deleteButton')
+              )}
             </button>
           </>
         }
       >
         <p className="text-sm text-slate-600">
-          This permanently removes{' '}
-          <span className="font-semibold text-slate-900">{deleting?.name}</span> ({deleting?.studentId}) from the
-          Google Sheet. This action cannot be undone.
+          {t('dashboard.deleteWarningBefore')}{' '}
+          <span className="font-semibold text-slate-900">
+            {deleting?.fullName || `${deleting?.firstName || ''} ${deleting?.lastName || ''}`.trim()}
+          </span>{' '}
+          ({deleting?.nic}) {t('dashboard.deleteWarningAfter')}
         </p>
       </Modal>
     </div>
