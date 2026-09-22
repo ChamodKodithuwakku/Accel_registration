@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import CheckboxGroup from '../components/CheckboxGroup'
 import FormInput from '../components/FormInput'
 import RadioGroup from '../components/RadioGroup'
@@ -101,7 +100,6 @@ export default function Register() {
         <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           {t('register.title')}
         </h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{t('register.subtitle')}</p>
       </div>
 
       <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-card sm:p-8">
@@ -263,12 +261,6 @@ export default function Register() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-sm text-slate-500">
-        {t('register.dashboardPrompt')}{' '}
-        <Link to="/dashboard" className="font-medium text-brand-600 transition hover:text-brand-700">
-          {t('register.dashboardLink')}
-        </Link>
-      </p>
     </div>
   )
 }

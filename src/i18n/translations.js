@@ -30,13 +30,10 @@ export const translations = {
     register: {
       badge: 'Registrations are open',
       title: 'Registration Form',
-      subtitle: 'Fill in your details below. Everything is saved straight into our Google Sheet.',
       submit: 'Submit',
       submitting: 'Submitting...',
       success: 'Registration submitted successfully.',
       fixErrors: 'Please fix the highlighted fields before submitting.',
-      dashboardPrompt: 'Managing registrations?',
-      dashboardLink: 'Open the dashboard',
       optional: 'optional',
     },
 
@@ -87,7 +84,6 @@ export const translations = {
 
     dashboard: {
       title: 'Dashboard',
-      subtitle: 'View, update and remove registration records.',
       refresh: 'Refresh',
       totalLabel: 'Total registrations',
       totalHint: 'All records in the sheet',
@@ -170,7 +166,6 @@ export const translations = {
       heardFromTooLong: 'Must be under 120 characters',
     },
 
-    footer: 'ACEL Registration System - React + Google Apps Script + Google Sheets',
   },
 
   si: {
@@ -181,13 +176,10 @@ export const translations = {
     register: {
       badge: 'ලියාපදිංචිය විවෘතයි',
       title: 'ලියාපදිංචි ආකෘති පත්‍රය',
-      subtitle: 'ඔබේ විස්තර පහතින් ඇතුළත් කරන්න. සියලු තොරතුරු කෙලින්ම Google Sheet එකට සුරැකේ.',
       submit: 'යොමු කරන්න',
       submitting: 'යොමු කරමින්...',
       success: 'ලියාපදිංචිය සාර්ථකව යොමු කරන ලදී.',
       fixErrors: 'යොමු කිරීමට පෙර ඉස්මතු කර ඇති ක්ෂේත්‍ර නිවැරදි කරන්න.',
-      dashboardPrompt: 'ලියාපදිංචි කළමනාකරණය කරනවාද?',
-      dashboardLink: 'උපකරණ පුවරුව විවෘත කරන්න',
       optional: 'අනිවාර්ය නොවේ',
     },
 
@@ -238,7 +230,6 @@ export const translations = {
 
     dashboard: {
       title: 'උපකරණ පුවරුව',
-      subtitle: 'ලියාපදිංචි වාර්තා බලන්න, යාවත්කාලීන කරන්න සහ ඉවත් කරන්න.',
       refresh: 'නැවුම් කරන්න',
       totalLabel: 'මුළු ලියාපදිංචි සංඛ්‍යාව',
       totalHint: 'පත්‍රයේ ඇති සියලු වාර්තා',
@@ -321,7 +312,6 @@ export const translations = {
       heardFromTooLong: 'අක්ෂර 120ට වඩා අඩු විය යුතුය',
     },
 
-    footer: 'ACEL ලියාපදිංචි පද්ධතිය - React + Google Apps Script + Google Sheets',
   },
 }
 

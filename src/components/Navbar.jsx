@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import LanguageToggle from './LanguageToggle'
 import { useLanguage } from '../context/LanguageContext'
 
 export default function Navbar() {
   const { t } = useLanguage()
+  // If the logo file is missing, fall back to the wordmark rather than showing
+  // a broken image icon.
+  const [logoFailed, setLogoFailed] = useState(false)
 
   const links = [
     { to: '/', label: t('nav.register'), end: true },
@@ -13,13 +17,19 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur">
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-        <NavLink to="/" className="flex shrink-0 items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold text-white">
-            A
-          </span>
-          <span className="hidden text-base font-semibold tracking-tight text-slate-900 sm:block">
-            {t('appName')} <span className="font-normal text-slate-500">{t('appNameSuffix')}</span>
-          </span>
+        <NavLink to="/" className="flex shrink-0 items-center" aria-label="ACCEL 7.0">
+          {logoFailed ? (
+            <span className="text-base font-semibold tracking-tight text-slate-900">
+              {t('appName')} <span className="font-normal text-slate-500">{t('appNameSuffix')}</span>
+            </span>
+          ) : (
+            <img
+              src="/accel-logo.png"
+              alt="ACCEL 7.0"
+              onError={() => setLogoFailed(true)}
+              className="h-9 w-auto object-contain sm:h-10"
+            />
+          )}
         </NavLink>
 
         <div className="flex items-center gap-2">
