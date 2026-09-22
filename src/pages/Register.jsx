@@ -91,18 +91,32 @@ export default function Register() {
   }))
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
-      <div className="text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-          {t('register.badge')}
-        </span>
-        <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          {t('register.title')}
-        </h1>
+    <div className="relative">
+      {/* Brand band behind the heading; the card below overlaps its lower edge */}
+      <div className="brand-gradient absolute inset-x-0 top-0 h-56 sm:h-64" aria-hidden="true">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -left-16 top-4 h-48 w-72 animate-glow-drift rounded-full bg-sky-400/25 blur-3xl" />
+          <div
+            className="absolute -right-10 top-10 h-44 w-72 animate-glow-drift rounded-full bg-emerald-300/20 blur-3xl"
+            style={{ animationDelay: '2.5s' }}
+          />
+        </div>
+        {/* Fade the band into the page so there is no hard seam */}
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-slate-50/0 to-slate-50" />
       </div>
 
-      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-card sm:p-8">
+      <div className="relative mx-auto max-w-2xl px-4 pb-14 pt-10 sm:px-6 sm:pt-14">
+        <div className="animate-rise-in text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+            {t('register.badge')}
+          </span>
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-white drop-shadow-sm sm:text-4xl">
+            {t('register.title')}
+          </h1>
+        </div>
+
+        <div className="glass-card mt-8 animate-rise-in rounded-2xl p-6 sm:p-8" style={{ animationDelay: '0.1s' }}>
         {toast && (
           <div className="mb-5">
             <Toast toast={displayToast} onDismiss={() => setToast(null)} />
@@ -261,6 +275,7 @@ export default function Register() {
         </form>
       </div>
 
+      </div>
     </div>
   )
 }

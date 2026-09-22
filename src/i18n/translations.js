@@ -84,6 +84,7 @@ export const translations = {
 
     dashboard: {
       title: 'Dashboard',
+      subtitle: 'View, update and remove registration records.',
       refresh: 'Refresh',
       totalLabel: 'Total registrations',
       totalHint: 'All records in the sheet',
@@ -230,6 +231,7 @@ export const translations = {
 
     dashboard: {
       title: 'උපකරණ පුවරුව',
+      subtitle: 'ලියාපදිංචි වාර්තා බලන්න, යාවත්කාලීන කරන්න සහ ඉවත් කරන්න.',
       refresh: 'නැවුම් කරන්න',
       totalLabel: 'මුළු ලියාපදිංචි සංඛ්‍යාව',
       totalHint: 'පත්‍රයේ ඇති සියලු වාර්තා',

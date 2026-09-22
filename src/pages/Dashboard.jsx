@@ -225,20 +225,28 @@ export default function Dashboard() {
   }))
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+    <div className="relative">
+      <div className="brand-gradient absolute inset-x-0 top-0 h-44" aria-hidden="true">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -left-16 top-0 h-40 w-72 animate-glow-drift rounded-full bg-sky-400/25 blur-3xl" />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-slate-50/0 to-slate-50" />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <div className="animate-rise-in">
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
             {t('dashboard.title')}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">{t('dashboard.subtitle')}</p>
+          <p className="mt-1 text-sm text-white/70">{t('dashboard.subtitle')}</p>
         </div>
 
         <button
           type="button"
           onClick={() => loadRecords()}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60 sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-medium text-white shadow-sm backdrop-blur-md transition hover:bg-white/20 disabled:opacity-60 sm:self-auto"
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path
@@ -543,6 +551,7 @@ export default function Dashboard() {
           ({deleting?.nic}) {t('dashboard.deleteWarningAfter')}
         </p>
       </Modal>
+      </div>
     </div>
   )
 }
