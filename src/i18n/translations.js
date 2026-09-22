@@ -29,7 +29,7 @@ export const translations = {
 
     register: {
       badge: 'Registrations are open',
-      title: 'Registration Form',
+      title: 'Visitor Registration Form',
       submit: 'Submit',
       submitting: 'Submitting...',
       success: 'Registration submitted successfully.',
@@ -175,7 +175,7 @@ export const translations = {
 
     register: {
       badge: 'ලියාපදිංචිය විවෘතයි',
-      title: 'ලියාපදිංචි ආකෘති පත්‍රය',
+      title: 'අමුත්තන් ලියාපදිංචි ආකෘති පත්‍රය',
       submit: 'යොමු කරන්න',
       submitting: 'යොමු කරමින්...',
       success: 'ලියාපදිංචිය සාර්ථකව යොමු කරන ලදී.',

@@ -24,10 +24,10 @@ export default function Navbar() {
             </span>
           ) : (
             <img
-              src="/accel-logo.png"
+              src="/logo.png"
               alt="ACCEL 7.0"
               onError={() => setLogoFailed(true)}
-              className="h-9 w-auto object-contain sm:h-10"
+              className="h-8 w-auto object-contain sm:h-9"
             />
           )}
         </NavLink>
