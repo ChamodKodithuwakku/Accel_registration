@@ -9,7 +9,18 @@
  *               verb travels inside the JSON body as `action`.
  */
 
-const BASE_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL
+// Deployed Apps Script web app. Used when VITE_GOOGLE_SCRIPT_URL is not set,
+// so the app works on Vercel with no environment configuration.
+// Note: this URL ships in the client bundle and is therefore public.
+const DEFAULT_SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycbx9aQj9M8T7nYmHUkyW-dEGVIqcBejhJI5t2mmhs29qA0_IextIHRH0fyZEmi4yaB-uRg/exec'
+
+// An env var still wins, so a different deployment can be pointed at without a code change.
+// Strip any quotes a .env file may have carried along.
+const BASE_URL = String(import.meta.env.VITE_GOOGLE_SCRIPT_URL || DEFAULT_SCRIPT_URL)
+  .trim()
+  .replace(/^['"]|['"]$/g, '')
+
 const REQUEST_TIMEOUT = 20000
 
 function assertConfigured() {
