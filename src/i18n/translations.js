@@ -72,6 +72,19 @@ export const translations = {
       Entrepreneurship: 'Entrepreneurship',
     },
 
+    charts: {
+      visitorsTitle: 'No. of visitors',
+      visitorsHint: 'Total registered so far',
+      todaySuffix: 'registered today',
+      visitorTypeTitle: 'Visitor type',
+      visitorTypeHint: 'Click a bar to filter the table below',
+      interestTitle: 'Field of interest',
+      interestHint: 'Share of all selections - visitors may pick more than one',
+      clearFilter: 'Clear',
+      noData: 'No data yet',
+      filteredNotice: 'Table filtered by',
+    },
+
     dashboard: {
       title: 'Dashboard',
       subtitle: 'View, update and remove registration records.',
@@ -208,6 +221,19 @@ export const translations = {
       'Digital Transformation': 'ඩිජිටල් පරිවර්තනය',
       Innovation: 'නව්‍යකරණය',
       Entrepreneurship: 'ව්‍යවසායකත්වය',
+    },
+
+    charts: {
+      visitorsTitle: 'අමුත්තන් සංඛ්‍යාව',
+      visitorsHint: 'මේ දක්වා ලියාපදිංචි වූ මුළු සංඛ්‍යාව',
+      todaySuffix: 'අද ලියාපදිංචි විය',
+      visitorTypeTitle: 'අමුත්තාගේ වර්ගය',
+      visitorTypeHint: 'පහත වගුව පෙරීමට තීරුවක් ක්ලික් කරන්න',
+      interestTitle: 'උනන්දුව දක්වන ක්ෂේත්‍රය',
+      interestHint: 'සියලු තේරීම්වලින් කොටස - අමුත්තන්ට එකකට වඩා තෝරාගත හැක',
+      clearFilter: 'ඉවත් කරන්න',
+      noData: 'තවම දත්ත නැත',
+      filteredNotice: 'වගුව පෙරා ඇත්තේ',
     },
 
     dashboard: {

@@ -6,6 +6,9 @@ import Modal from '../components/Modal'
 import RadioGroup from '../components/RadioGroup'
 import Spinner from '../components/Spinner'
 import Toast from '../components/Toast'
+import InterestPieChart from '../components/charts/InterestPieChart'
+import VisitorCountCard from '../components/charts/VisitorCountCard'
+import VisitorTypeChart from '../components/charts/VisitorTypeChart'
 import { useLanguage } from '../context/LanguageContext'
 import { INTEREST_AREAS, VISITOR_CATEGORIES } from '../i18n/translations'
 import { deleteRecord, getRecords, updateRecord } from '../services/api'
@@ -22,29 +25,6 @@ function sortValue(record, key) {
   return String(record[key] || '').toLowerCase()
 }
 
-function StatCard({ label, value, hint, accent = 'brand' }) {
-  const accents = {
-    brand: 'bg-brand-50 text-brand-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    slate: 'bg-slate-100 text-slate-600',
-  }
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-      <div className="flex items-start justify-between">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${accents[accent]}`}>
-          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 8a7 7 0 1114 0H3z" />
-          </svg>
-        </span>
-      </div>
-      <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
-      {hint && <p className="mt-1 truncate text-xs text-slate-500">{hint}</p>}
-    </div>
-  )
-}
-
 export default function Dashboard() {
   const { t } = useLanguage()
 
@@ -55,6 +35,9 @@ export default function Dashboard() {
 
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState({ key: 'id', direction: 'desc' })
+  // Chart-driven filters. Clicking a bar or a slice narrows the table below.
+  const [categoryFilter, setCategoryFilter] = useState(null)
+  const [interestFilter, setInterestFilter] = useState(null)
 
   const [editing, setEditing] = useState(null)
   const [editForm, setEditForm] = useState(null)
@@ -84,8 +67,14 @@ export default function Dashboard() {
   const visibleRecords = useMemo(() => {
     const term = search.trim().toLowerCase()
 
+    const byCharts = records.filter((record) => {
+      if (categoryFilter && record.visitorCategory !== categoryFilter) return false
+      if (interestFilter && !(record.interestAreas || []).includes(interestFilter)) return false
+      return true
+    })
+
     const filtered = term
-      ? records.filter((record) =>
+      ? byCharts.filter((record) =>
           [
             record.fullName,
             record.firstName,
@@ -100,7 +89,7 @@ export default function Dashboard() {
             .toLowerCase()
             .includes(term)
         )
-      : records
+      : byCharts
 
     return [...filtered].sort((a, b) => {
       const left = sortValue(a, sort.key)
@@ -109,7 +98,34 @@ export default function Dashboard() {
       if (left > right) return sort.direction === 'asc' ? 1 : -1
       return 0
     })
-  }, [records, search, sort])
+  }, [records, search, sort, categoryFilter, interestFilter])
+
+  // Chart data is computed from ALL records, not the filtered view, so the
+  // charts keep showing the whole picture while the table narrows.
+  const categoryData = useMemo(
+    () =>
+      VISITOR_CATEGORIES.map((key) => ({
+        key,
+        label: t(`categories.${key}`),
+        count: records.filter((record) => record.visitorCategory === key).length,
+      })),
+    [records, t]
+  )
+
+  const interestData = useMemo(
+    () =>
+      INTEREST_AREAS.map((key) => ({
+        key,
+        label: t(`interests.${key}`),
+        count: records.filter((record) => (record.interestAreas || []).includes(key)).length,
+      })),
+    [records, t]
+  )
+
+  const totalSelections = useMemo(
+    () => interestData.reduce((sum, item) => sum + item.count, 0),
+    [interestData]
+  )
 
   const todayCount = useMemo(() => {
     const today = new Date()
@@ -241,23 +257,21 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <StatCard
-          label={t('dashboard.totalLabel')}
-          value={loading ? '-' : records.length}
-          hint={t('dashboard.totalHint')}
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <VisitorCountCard total={records.length} today={todayCount} loading={loading} />
+
+        <VisitorTypeChart
+          data={categoryData}
+          total={records.length}
+          selected={categoryFilter}
+          onSelect={setCategoryFilter}
         />
-        <StatCard
-          label={t('dashboard.todayLabel')}
-          value={loading ? '-' : todayCount}
-          hint={t('dashboard.todayHint')}
-          accent="emerald"
-        />
-        <StatCard
-          label={t('dashboard.showingLabel')}
-          value={loading ? '-' : visibleRecords.length}
-          hint={search ? `${t('dashboard.filteredBy')}: ${search}` : t('dashboard.noFilter')}
-          accent="slate"
+
+        <InterestPieChart
+          data={interestData}
+          totalSelections={totalSelections}
+          selected={interestFilter}
+          onSelect={setInterestFilter}
         />
       </div>
 
@@ -306,6 +320,35 @@ export default function Dashboard() {
           </label>
         </div>
 
+        {(categoryFilter || interestFilter) && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/60 px-4 py-2.5 text-xs sm:px-5">
+            <span className="text-slate-500">{t('charts.filteredNotice')}:</span>
+            {categoryFilter && (
+              <button
+                type="button"
+                onClick={() => setCategoryFilter(null)}
+                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-100"
+              >
+                {t(`categories.${categoryFilter}`)}
+                <span aria-hidden="true">&times;</span>
+              </button>
+            )}
+            {interestFilter && (
+              <button
+                type="button"
+                onClick={() => setInterestFilter(null)}
+                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-100"
+              >
+                {t(`interests.${interestFilter}`)}
+                <span aria-hidden="true">&times;</span>
+              </button>
+            )}
+            <span className="ml-auto tabular-nums text-slate-500">
+              {visibleRecords.length} / {records.length}
+            </span>
+          </div>
+        )}
+
         <DataTable
           records={visibleRecords}
           loading={loading}
@@ -316,7 +359,7 @@ export default function Dashboard() {
           sort={sort}
           onSortChange={handleSortChange}
           busyId={busyId}
-          hasFilter={Boolean(search.trim())}
+          hasFilter={Boolean(search.trim() || categoryFilter || interestFilter)}
         />
       </div>
 
