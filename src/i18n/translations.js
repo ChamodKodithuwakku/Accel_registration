@@ -69,6 +69,21 @@ export const translations = {
       Entrepreneurship: 'Entrepreneurship',
     },
 
+    login: {
+      title: 'Dashboard Login',
+      subtitle: 'Sign in to view and manage registrations.',
+      username: 'Username',
+      password: 'Password',
+      submit: 'Sign in',
+      signingIn: 'Signing in...',
+      invalid: 'Incorrect username or password.',
+      usernameRequired: 'Username is required',
+      passwordRequired: 'Password is required',
+      logout: 'Sign out',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password',
+    },
+
     charts: {
       visitorsTitle: 'No. of visitors',
       visitorsHint: 'Total registered so far',
@@ -214,6 +229,21 @@ export const translations = {
       'Digital Transformation': 'ඩිජිටල් පරිවර්තනය',
       Innovation: 'නව්‍යකරණය',
       Entrepreneurship: 'ව්‍යවසායකත්වය',
+    },
+
+    login: {
+      title: 'උපකරණ පුවරු පිවිසුම',
+      subtitle: 'ලියාපදිංචි වාර්තා බැලීමට සහ කළමනාකරණය කිරීමට පිවිසෙන්න.',
+      username: 'පරිශීලක නාමය',
+      password: 'මුරපදය',
+      submit: 'පිවිසෙන්න',
+      signingIn: 'පිවිසෙමින්...',
+      invalid: 'පරිශීලක නාමය හෝ මුරපදය වැරදියි.',
+      usernameRequired: 'පරිශීලක නාමය අනිවාර්ය වේ',
+      passwordRequired: 'මුරපදය අනිවාර්ය වේ',
+      logout: 'ඉවත් වන්න',
+      showPassword: 'මුරපදය පෙන්වන්න',
+      hidePassword: 'මුරපදය සඟවන්න',
     },
 
     charts: {
