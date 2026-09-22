@@ -478,6 +478,32 @@ function jsonResponse(payload) {
 /* One-time setup (run manually from the Apps Script editor)           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Rewrites ONLY the header row to match HEADERS, keeping every data row.
+ *
+ * Use this when the columns changed but the sheet already holds registrations -
+ * setupSheet() would wipe them. Safe to run repeatedly.
+ */
+function updateHeaders() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = spreadsheet.getSheetByName(SHEET_NAME);
+
+  if (!sheet) {
+    throw new Error('Sheet "' + SHEET_NAME + '" was not found. Run setupSheet() instead.');
+  }
+
+  // Widen the sheet first if it has fewer columns than the schema needs.
+  var missing = HEADERS.length - sheet.getMaxColumns();
+  if (missing > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), missing);
+
+  writeHeaders(sheet);
+
+  var rows = Math.max(0, sheet.getLastRow() - 1);
+  SpreadsheetApp.getUi().alert(
+    'Header row updated to ' + HEADERS.length + ' columns. ' + rows + ' data row(s) left untouched.'
+  );
+}
+
 /** Rebuilds the sheet with the current HEADERS. WARNING: clears existing data. */
 function setupSheet() {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
